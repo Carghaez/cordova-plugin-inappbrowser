@@ -25,6 +25,7 @@ import android.provider.Browser;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -38,6 +39,7 @@ import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.view.MotionEvent;
 import android.webkit.CookieManager;
 import android.webkit.CookieSyncManager;
 import android.webkit.HttpAuthHandler;
@@ -94,6 +96,7 @@ public class InAppBrowser extends CordovaPlugin {
 
     private InAppBrowserDialog dialog;
     private WebView inAppWebView;
+    private WebView inAppHeaderWebView;
     private EditText edittext;
     private CallbackContext callbackContext;
     private boolean showLocationBar = true;
@@ -122,11 +125,12 @@ public class InAppBrowser extends CordovaPlugin {
         if (action.equals("open")) {
             this.callbackContext = callbackContext;
             final String url = args.getString(0);
-            String t = args.optString(1);
-            if (t == null || t.equals("") || t.equals(NULL)) {
-                t = SELF;
-            }
-            final String target = t;
+            final String dataHeader = args.optString (1);
+            // String t = args.optString(1);
+            // if (t == null || t.equals("") || t.equals(NULL)) {
+            //     t = SELF;
+            // }
+            final String target = SELF;
             final HashMap<String, Boolean> features = parseFeature(args.optString(2));
 
             LOG.d(LOG_TAG, "target = " + target);
@@ -193,7 +197,7 @@ public class InAppBrowser extends CordovaPlugin {
                         // load in InAppBrowser
                         else {
                             LOG.d(LOG_TAG, "loading in InAppBrowser");
-                            result = showWebPage(url, features);
+                            result = showWebPage(url, dataHeader, features);
                         }
                     }
                     // SYSTEM
@@ -204,7 +208,7 @@ public class InAppBrowser extends CordovaPlugin {
                     // BLANK - or anything else
                     else {
                         LOG.d(LOG_TAG, "in blank");
-                        result = showWebPage(url, features);
+                        result = showWebPage(url, dataHeader, features);
                     }
 
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, result);
@@ -331,7 +335,7 @@ public class InAppBrowser extends CordovaPlugin {
      *                    which should be executed directly.
      */
     private void injectDeferredObject(String source, String jsWrapper) {
-        if (inAppWebView!=null) {
+        if (inAppWebView != null) {
             String scriptToInject;
             if (jsWrapper != null) {
                 org.json.JSONArray jsonEsc = new org.json.JSONArray();
@@ -523,7 +527,7 @@ public class InAppBrowser extends CordovaPlugin {
      * @param url the url to load.
      * @param features jsonObject
      */
-    public String showWebPage(final String url, HashMap<String, Boolean> features) {
+    public String showWebPage(final String url, final String dataHeader, HashMap<String, Boolean> features) {
         // Determine if we should hide the location bar.
         showLocationBar = true;
         showZoomControls = true;
@@ -568,7 +572,7 @@ public class InAppBrowser extends CordovaPlugin {
             }
             Boolean wideViewPort = features.get(USER_WIDE_VIEW_PORT);
             if (wideViewPort != null ) {
-		            useWideViewPort = wideViewPort.booleanValue();
+                    useWideViewPort = wideViewPort.booleanValue();
             }
         }
 
@@ -612,7 +616,12 @@ public class InAppBrowser extends CordovaPlugin {
                 // Toolbar layout
                 RelativeLayout toolbar = new RelativeLayout(cordova.getActivity());
                 //Please, no more black!
-                toolbar.setBackgroundColor(android.graphics.Color.LTGRAY);
+                GradientDrawable gd = new GradientDrawable(
+                  GradientDrawable.Orientation.LEFT_RIGHT,
+                  new int[] {0xFF47d2c2, 0xFF4AB0C7}
+                );
+                gd.setCornerRadius(0f);
+                toolbar.setBackgroundDrawable(gd);
                 toolbar.setLayoutParams(new RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT, this.dpToPixels(44)));
                 toolbar.setPadding(this.dpToPixels(2), this.dpToPixels(2), this.dpToPixels(2), this.dpToPixels(2));
                 toolbar.setHorizontalGravity(Gravity.LEFT);
@@ -771,6 +780,7 @@ public class InAppBrowser extends CordovaPlugin {
                     }
 
                 });
+
                 WebViewClient client = new InAppBrowserClient(thatWebView, edittext);
                 inAppWebView.setWebViewClient(client);
                 WebSettings settings = inAppWebView.getSettings();
@@ -815,7 +825,6 @@ public class InAppBrowser extends CordovaPlugin {
                 }
 
                 inAppWebView.loadUrl(url);
-                inAppWebView.setId(Integer.valueOf(6));
                 inAppWebView.getSettings().setLoadWithOverviewMode(true);
                 inAppWebView.getSettings().setUseWideViewPort(useWideViewPort);
                 inAppWebView.requestFocus();
@@ -830,10 +839,44 @@ public class InAppBrowser extends CordovaPlugin {
                 toolbar.addView(edittext);
                 toolbar.addView(close);
 
-                // Don't add the toolbar if its been disabled
+                if (dataHeader != "") {
+                  // WebViewHeader
+                  inAppHeaderWebView = new WebView(cordova.getActivity());
+                  inAppHeaderWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, this.dpToPixels(150)));
+                  inAppHeaderWebView.setId(Integer.valueOf(16));
+                 // WebViewClient client2 = new InAppBrowserClient(thatWebView, edittext);
+                 // inAppHeaderWebView.setWebViewClient(client2);
+                  WebSettings settings2 = inAppHeaderWebView.getSettings();
+                  settings2.setJavaScriptEnabled(true);
+
+                  if (overrideUserAgent != null) {
+                      settings2.setUserAgentString(overrideUserAgent);
+                  }
+                  if (appendUserAgent != null) {
+                      settings2.setUserAgentString(settings2.getUserAgentString() + appendUserAgent);
+                  }
+                  settings2.setDomStorageEnabled(true);
+
+                  inAppHeaderWebView.loadData(dataHeader, "text/html", null);
+
+                  inAppHeaderWebView.setOnTouchListener(new View.OnTouchListener() {
+                      @Override
+                      public boolean onTouch(View v, MotionEvent event) {
+                          // Do what you want
+                          closeDialog();
+                          return false;
+                      }
+                  });
+                }
+
+               // Don't add the toolbar if its been disabled
                 if (getShowLocationBar()) {
                     // Add our toolbar to our main view/layout
                     main.addView(toolbar);
+                }
+
+                if (dataHeader != "") {
+                  main.addView(inAppHeaderWebView);
                 }
 
                 // Add our webview to our main view/layout
