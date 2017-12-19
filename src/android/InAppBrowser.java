@@ -842,7 +842,11 @@ public class InAppBrowser extends CordovaPlugin {
                 if (dataHeader != "") {
                   // WebViewHeader
                   inAppHeaderWebView = new WebView(cordova.getActivity());
-                  inAppHeaderWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, this.dpToPixels(150)));
+                  DisplayMetrics displaymetrics = new DisplayMetrics();
+                  cordova.getActivity().getWindowManager().getDefaultDisplay().getMetrics(displaymetrics);
+                  final int displayWidth = displaymetrics.widthPixels;
+                  final int displayHeight = displayWidth / 4;
+                  inAppHeaderWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, displayHeight));
                   inAppHeaderWebView.setId(Integer.valueOf(16));
                  // WebViewClient client2 = new InAppBrowserClient(thatWebView, edittext);
                  // inAppHeaderWebView.setWebViewClient(client2);
