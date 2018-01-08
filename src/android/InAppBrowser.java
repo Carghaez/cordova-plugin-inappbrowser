@@ -127,6 +127,9 @@ public class InAppBrowser extends CordovaPlugin {
             this.callbackContext = callbackContext;
             final String url = args.getString(0);
             final String dataHeader = args.optString(1);
+            if (dataHeader == null || dataHeader.equals("") || dataHeader.equals(NULL)) {
+              dataHeader = "";
+            }
             // String t = args.optString(1);
             // if (t == null || t.equals("") || t.equals(NULL)) {
             //     t = SELF;
