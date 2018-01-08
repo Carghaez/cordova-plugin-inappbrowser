@@ -126,7 +126,7 @@ public class InAppBrowser extends CordovaPlugin {
         if (action.equals("open")) {
             this.callbackContext = callbackContext;
             final String url = args.getString(0);
-            final String dataHeader = args.optString (1);
+            final String dataHeader = args.optString(1);
             // String t = args.optString(1);
             // if (t == null || t.equals("") || t.equals(NULL)) {
             //     t = SELF;
@@ -840,7 +840,7 @@ public class InAppBrowser extends CordovaPlugin {
                 toolbar.addView(edittext);
                 toolbar.addView(close);
 
-                if (dataHeader != "") {
+                if (!dataHeader.equals("")) {
                   // WebViewHeader
                   inAppHeaderWebView = new WebView(cordova.getActivity());
                   DisplayMetrics displaymetrics = new DisplayMetrics();
@@ -880,7 +880,7 @@ public class InAppBrowser extends CordovaPlugin {
                     main.addView(toolbar);
                 }
 
-                if (dataHeader != "") {
+                if (!dataHeader.equals("")) {
                   main.addView(inAppHeaderWebView);
                 }
 
