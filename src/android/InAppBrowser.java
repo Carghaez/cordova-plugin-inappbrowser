@@ -80,6 +80,7 @@ public class InAppBrowser extends CordovaPlugin {
     protected static final String LOG_TAG = "InAppBrowser";
     private static final String SELF = "_self";
     private static final String SYSTEM = "_system";
+    private static final String BLANK = "_blank";
     private static final String EXIT_EVENT = "exit";
     private static final String LOCATION = "location";
     private static final String ZOOM = "zoom";
@@ -126,16 +127,19 @@ public class InAppBrowser extends CordovaPlugin {
         if (action.equals("open")) {
             this.callbackContext = callbackContext;
             final String url = args.getString(0);
+            String t = args.optString(1);
             final String dataHeader = (
-               args.optString(1) == null
-               || args.optString(1).equals("")
-               || args.optString(1).equals(NULL)
-            ) ? "" : args.optString(1);
-            // String t = args.optString(1);
-            // if (t == null || t.equals("") || t.equals(NULL)) {
-            //     t = SELF;
-            // }
-            final String target = SELF;
+                  t == null
+               || t.equals("")
+               || t.equals(NULL)
+               || t.equals(SELF)
+               || t.equals(SYSTEM)
+            ) ? "" : t;
+            final String target = (
+                  t.equals(SELF)
+               || t.equals(SYSTEM)
+               || t.equals(BLANK)
+            ) ? t : SELF;
             final HashMap<String, Boolean> features = parseFeature(args.optString(2));
 
             LOG.d(LOG_TAG, "target = " + target);
