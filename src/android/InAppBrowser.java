@@ -876,7 +876,7 @@ public class InAppBrowser extends CordovaPlugin {
                       @Override
                       public boolean onTouch(View v, MotionEvent event) {
                           // Do what you want
-                          closeDialog();
+                          dialog.hide();
                           return false;
                       }
                   });
