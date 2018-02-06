@@ -22,15 +22,14 @@
 #import <Cordova/CDVScreenOrientationDelegate.h>
 
 #ifdef __CORDOVA_4_0_0
-    #import <Cordova/CDVUIWebViewDelegate.h>
+#import <Cordova/CDVUIWebViewDelegate.h>
 #else
-    #import <Cordova/CDVWebViewDelegate.h>
+#import <Cordova/CDVWebViewDelegate.h>
 #endif
 
 @class CDVInAppBrowserViewController;
 
-@interface CDVInAppBrowser : CDVPlugin {
-}
+@interface CDVInAppBrowser : CDVPlugin {}
 
 @property (nonatomic, retain) CDVInAppBrowserViewController* inAppBrowserViewController;
 @property (nonatomic, copy) NSString* callbackId;
@@ -68,22 +67,22 @@
 
 @end
 
-@interface CDVInAppBrowserViewController : UIViewController <UIWebViewDelegate, CDVScreenOrientationDelegate>{
-    @private
+@interface CDVInAppBrowserViewController : UIViewController <UIWebViewDelegate, CDVScreenOrientationDelegate, UIGestureRecognizerDelegate>{
+@private
     NSString* _userAgent;
     NSString* _prevUserAgent;
     NSInteger _userAgentLockToken;
     CDVInAppBrowserOptions *_browserOptions;
-    
+
 #ifdef __CORDOVA_4_0_0
     CDVUIWebViewDelegate* _webViewDelegate;
 #else
     CDVWebViewDelegate* _webViewDelegate;
 #endif
-    
 }
 
 @property (nonatomic, strong) IBOutlet UIWebView* webView;
+@property (nonatomic, strong) IBOutlet UIWebView* webViewHeader;
 @property (nonatomic, strong) IBOutlet UIBarButtonItem* closeButton;
 @property (nonatomic, strong) IBOutlet UILabel* addressLabel;
 @property (nonatomic, strong) IBOutlet UIBarButtonItem* backButton;
@@ -97,6 +96,7 @@
 
 - (void)close;
 - (void)navigateTo:(NSURL*)url;
+- (void)setWebViewHeaderContent:(NSString*) target;
 - (void)showLocationBar:(BOOL)show;
 - (void)showToolBar:(BOOL)show : (NSString *) toolbarPosition;
 - (void)setCloseButtonTitle:(NSString*)title;

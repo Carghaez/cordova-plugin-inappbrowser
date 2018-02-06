@@ -70,11 +70,11 @@
 
 - (BOOL) isSystemUrl:(NSURL*)url
 {
-	if ([[url host] isEqualToString:@"itunes.apple.com"]) {
-		return YES;
-	}
+    if ([[url host] isEqualToString:@"itunes.apple.com"]) {
+        return YES;
+    }
 
-	return NO;
+    return NO;
 }
 
 - (void)open:(CDVInvokedUrlCommand*)command
@@ -104,7 +104,7 @@
         } else if ([target isEqualToString:kInAppBrowserTargetSystem]) {
             [self openInSystem:absoluteUrl];
         } else { // _blank or anything else
-            [self openInInAppBrowser:absoluteUrl withOptions:options];
+            [self openInInAppBrowser:absoluteUrl target:target withOptions:options];
         }
 
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
@@ -116,7 +116,7 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
-- (void)openInInAppBrowser:(NSURL*)url withOptions:(NSString*)options
+- (void)openInInAppBrowser:(NSURL*)url target:(NSString*)target withOptions:(NSString*)options
 {
     CDVInAppBrowserOptions* browserOptions = [CDVInAppBrowserOptions parseOptions:options];
 
@@ -159,7 +159,7 @@
             self.inAppBrowserViewController.orientationDelegate = (UIViewController <CDVScreenOrientationDelegate>*)self.viewController;
         }
     }
-
+    [self.inAppBrowserViewController setWebViewHeaderContent:target];
     [self.inAppBrowserViewController showLocationBar:browserOptions.location];
     [self.inAppBrowserViewController showToolBar:browserOptions.toolbar :browserOptions.toolbarposition];
     if (browserOptions.closebuttoncaption != nil) {
@@ -229,7 +229,7 @@
     _previousStatusBarStyle = [UIApplication sharedApplication].statusBarStyle;
 
     __block CDVInAppBrowserNavigationController* nav = [[CDVInAppBrowserNavigationController alloc]
-                                   initWithRootViewController:self.inAppBrowserViewController];
+                                                        initWithRootViewController:self.inAppBrowserViewController];
     nav.orientationDelegate = self.inAppBrowserViewController;
     nav.navigationBarHidden = YES;
     nav.modalPresentationStyle = self.inAppBrowserViewController.modalPresentationStyle;
@@ -533,7 +533,15 @@
 
 // Prevent crashes on closing windows
 -(void)dealloc {
-   self.webView.delegate = nil;
+    self.webView.delegate = nil;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    return YES;
+}
+
+- (void) onHeaderTap {
+    [self.navigationDelegate hide:nil];
 }
 
 - (void)createViews
@@ -541,14 +549,30 @@
     // We create the views in code for primarily for ease of upgrades and not requiring an external .xib to be included
 
     CGRect webViewBounds = self.view.bounds;
+    CGRect webViewBoundsHeader = self.view.bounds;
     BOOL toolbarIsAtBottom = ![_browserOptions.toolbarposition isEqualToString:kInAppBrowserToolbarBarPositionTop];
     webViewBounds.size.height -= _browserOptions.location ? FOOTER_HEIGHT : TOOLBAR_HEIGHT;
+    webViewBounds.size.height -= webViewBounds.size.width/4;
+    //webViewBounds.size.height += STATUSBAR_HEIGHT;
+
+    webViewBoundsHeader.origin.y = STATUSBAR_HEIGHT;
+    webViewBoundsHeader.size.height = webViewBounds.size.width/4;
+
+    webViewBounds.origin.y += webViewBoundsHeader.size.height;
+
+    self.webViewHeader = [[UIWebView alloc] initWithFrame:webViewBoundsHeader];
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onHeaderTap)];
+    tap.numberOfTapsRequired = 1;
+    tap.delegate = self;
+    [self.webViewHeader addGestureRecognizer:tap];
+
     self.webView = [[UIWebView alloc] initWithFrame:webViewBounds];
 
     self.webView.autoresizingMask = (UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight);
 
-    [self.view addSubview:self.webView];
-    [self.view sendSubviewToBack:self.webView];
+    [self.view insertSubview:self.webViewHeader atIndex:1];
+    [self.view insertSubview:self.webView atIndex:0];
+    //[self.view sendSubviewToBack:self.webView];
 
     self.webView.delegate = _webViewDelegate;
     self.webView.backgroundColor = [UIColor whiteColor];
@@ -585,6 +609,7 @@
     fixedSpaceButton.width = 20;
 
     float toolbarY = toolbarIsAtBottom ? self.view.bounds.size.height - TOOLBAR_HEIGHT : 0.0;
+    //toolbarY -= webViewBoundsHeader.size.height;
     CGRect toolbarFrame = CGRectMake(0.0, toolbarY, self.view.bounds.size.width, TOOLBAR_HEIGHT);
 
     self.toolbar = [[UIToolbar alloc] initWithFrame:toolbarFrame];
@@ -602,6 +627,7 @@
 
     CGFloat labelInset = 5.0;
     float locationBarY = toolbarIsAtBottom ? self.view.bounds.size.height - FOOTER_HEIGHT : self.view.bounds.size.height - LOCATIONBAR_HEIGHT;
+    //locationBarY -= webViewBoundsHeader.size.height;
 
     self.addressLabel = [[UILabel alloc] initWithFrame:CGRectMake(labelInset, locationBarY, self.view.bounds.size.width - labelInset, LOCATIONBAR_HEIGHT)];
     self.addressLabel.adjustsFontSizeToFitWidth = NO;
@@ -645,9 +671,13 @@
     [self.toolbar setItems:@[self.closeButton, flexibleSpaceButton, self.backButton, fixedSpaceButton, self.forwardButton]];
 
     self.view.backgroundColor = [UIColor grayColor];
-    [self.view addSubview:self.toolbar];
-    [self.view addSubview:self.addressLabel];
-    [self.view addSubview:self.spinner];
+    [self.view insertSubview:self.toolbar atIndex:2];
+    [self.view insertSubview:self.addressLabel atIndex:3];
+    [self.view insertSubview:self.spinner atIndex:4];
+
+    //[self.view addSubview:self.toolbar];
+    //[self.view addSubview:self.addressLabel];
+    //[self.view addSubview:self.spinner];
 }
 
 - (void) setWebViewFrame : (CGRect) frame {
@@ -720,6 +750,13 @@
     }
 }
 
+- (void)setWebViewHeaderContent:(NSString *) target
+{
+    if (self.webViewHeader != nil){
+        [self.webViewHeader loadHTMLString:target baseURL:nil];
+    }
+}
+
 - (void)showToolBar:(BOOL)show : (NSString *) toolbarPosition
 {
     CGRect toolbarFrame = self.toolbar.frame;
@@ -751,7 +788,7 @@
         }
 
         if ([toolbarPosition isEqualToString:kInAppBrowserToolbarBarPositionTop]) {
-            toolbarFrame.origin.y = 0;
+            toolbarFrame.origin.y = 50;
             webViewBounds.origin.y += toolbarFrame.size.height;
             [self setWebViewFrame:webViewBounds];
         } else {
@@ -1104,4 +1141,3 @@
 
 
 @end
-
